@@ -1,0 +1,27 @@
+---
+description: NestJS DTO validation with class-validator and class-transformer
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# NestJS Validation
+
+- **Always decorate DTOs** with `class-validator` decorators — never validate manually inside services.
+- **Enable globally** in `main.ts`: `app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))`.
+  - `whitelist: true` strips unknown properties automatically.
+  - `transform: true` auto-converts payload types to match DTO class types.
+- **`class-transformer`:** Use `@Type()` for nested objects and `@Expose()` / `@Exclude()` for response shaping.
+
+```ts
+// ✅ GOOD DTO
+import { IsString, IsEmail, MinLength } from 'class-validator';
+
+export class CreateUserDto {
+  @IsString()
+  @MinLength(2)
+  name: string;
+
+  @IsEmail()
+  email: string;
+}
+```

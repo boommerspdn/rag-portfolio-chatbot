@@ -1,0 +1,43 @@
+---
+description: Components must extend their underlying HTML element's props
+globs: **/*.tsx
+alwaysApply: true
+---
+
+# Extend HTML Element Props in Components
+
+Every component must extend the native HTML element props it renders so callers can pass `className`, `onClick`, event handlers, `data-*` attributes, etc. without any extra wiring.
+
+- Use `React.ComponentPropsWithoutRef<'element'>` (preferred) or `React.HTMLAttributes<HTMLElement>`
+- Spread `...props` onto the root element
+- Place custom props before `...props` so callers can still override
+
+```tsx
+// ❌ BAD — consumers cannot pass className, onClick, etc.
+interface CardProps {
+  title: string;
+}
+export function Card({ title }: CardProps) {
+  return <div>{title}</div>;
+}
+
+// ✅ GOOD — extends div so all HTML div props work
+interface CardProps extends React.ComponentPropsWithoutRef<'div'> {
+  title: string;
+}
+export function Card({ title, className, ...props }: CardProps) {
+  return (
+    <div className={cn('rounded-lg p-4', className)} {...props}>
+      {title}
+    </div>
+  );
+}
+```
+
+Apply the same pattern for any element (`button`, `input`, `a`, `section`, etc.):
+
+```tsx
+interface ButtonProps extends React.ComponentPropsWithoutRef<'button'> {
+  variant?: 'primary' | 'ghost';
+}
+```

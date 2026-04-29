@@ -1,0 +1,26 @@
+---
+description: NestJS module/controller/service architecture conventions
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# NestJS Architecture
+
+- **Module boundaries:** Every feature gets its own module (`*.module.ts`). Never import services directly across features — use the module's `exports`.
+- **Thin controllers:** Controllers only handle HTTP concerns (routing, status codes, extracting params). All business logic belongs in the service layer.
+- **DTOs for everything:** Use a dedicated DTO class for every request body and response shape. Never accept or return plain objects.
+- **Barrel exports:** Each module folder should have an `index.ts` re-exporting its public API.
+
+```ts
+// ❌ BAD — logic in controller
+@Post()
+async create(@Body() body: { name: string }) {
+  return this.db.save({ name: body.name.trim().toLowerCase() });
+}
+
+// ✅ GOOD — delegate to service
+@Post()
+async create(@Body() dto: CreateUserDto): Promise<UserResponseDto> {
+  return this.userService.create(dto);
+}
+```

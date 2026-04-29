@@ -1,0 +1,25 @@
+---
+description: FastAPI router and service layer architecture
+globs: apps/ai/**/*.py
+alwaysApply: false
+---
+
+# FastAPI Architecture
+
+- **Router-based structure:** Split routes into routers per feature (`routers/chat.py`, `routers/health.py`) and include them in `main.py` with a prefix.
+- **Thin route handlers:** Route functions only parse inputs and delegate to a service or use-case function. No business logic in the handler.
+- **Dependency injection:** Use FastAPI's `Depends()` for shared resources (DB sessions, auth, config).
+
+```python
+# ❌ BAD — logic inside route handler
+@router.post("/chat")
+async def chat(body: ChatRequest):
+    chunks = body.message.split()
+    embedding = openai.embed(chunks)
+    ...
+
+# ✅ GOOD — delegate to service
+@router.post("/chat")
+async def chat(body: ChatRequest, service: ChatService = Depends(get_chat_service)):
+    return await service.answer(body)
+```

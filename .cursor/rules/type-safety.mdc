@@ -1,0 +1,21 @@
+---
+description: Strict TypeScript type safety and Zod validation
+globs: **/*.ts, **/*.tsx
+alwaysApply: true
+---
+
+# Type Safety (Strict)
+
+- **Zero Tolerance for `any`:** Never use `any`. Use generics, `unknown`, or define specific interfaces/types.
+- **Zod Integration:** Use Zod for all data validation — API responses, form schemas, and external input.
+
+```ts
+// ❌ BAD
+function parse(data: any) { ... }
+
+// ✅ GOOD
+const schema = z.object({ name: z.string() });
+function parse(data: unknown) {
+  return schema.parse(data);
+}
+```

@@ -1,0 +1,18 @@
+---
+description: Data fetching strategy — server-first, SWR for client
+globs: **/*.tsx, **/*.ts
+alwaysApply: false
+---
+
+# Data Fetching Strategy
+
+- **Server-First:** Always prefer Server Components and fetch data server-side via Server Actions or direct `fetch` in RSC.
+- **Client Fallback:** Use client-side fetching only when the UI needs real-time updates or user-interaction-based revalidation.
+- **SWR:** Use **SWR** for all client-side fetching. Configure Axios or native `fetch` as a reusable fetcher.
+
+```ts
+// ✅ Client-side fetching with SWR
+import useSWR from 'swr';
+const fetcher = (url: string) => fetch(url).then(r => r.json());
+const { data } = useSWR('/api/profile', fetcher);
+```

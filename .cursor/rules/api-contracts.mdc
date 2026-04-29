@@ -1,0 +1,20 @@
+---
+description: API contract consistency between gateway and AI service
+globs: apps/api/**/*.ts, apps/ai/**/*.py
+alwaysApply: false
+---
+
+# API Contracts
+
+- **Shared shapes:** The NestJS gateway and FastAPI service must agree on request/response shapes. When changing one, update the other in the same PR.
+- **OpenAPI tags:** Every FastAPI router must declare a `tags=` list; every NestJS controller must use `@ApiTags()` from `@nestjs/swagger`.
+- **Streaming (SSE):** For streamed responses, FastAPI must use `StreamingResponse` with `media_type="text/event-stream"`. The NestJS proxy must forward the stream without buffering.
+- **Error format:** Both services must return errors in the same JSON envelope so the frontend handles one shape:
+
+```json
+{
+  "statusCode": 404,
+  "message": "Resource not found",
+  "error": "Not Found"
+}
+```

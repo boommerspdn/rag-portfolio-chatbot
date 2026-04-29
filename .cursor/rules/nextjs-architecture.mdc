@@ -1,0 +1,10 @@
+---
+description: Next.js App Router architecture and component placement
+globs: **/*.tsx, **/*.ts
+alwaysApply: true
+---
+
+# Project Architecture
+
+- **Next.js App Router:** Always use the `app/` directory conventions.
+- **Component Placement:** Keep components close to where they are used. Globally shared components belong in `@/components/ui` (shadcn primitives) or `@/components/shared` (custom shared components).

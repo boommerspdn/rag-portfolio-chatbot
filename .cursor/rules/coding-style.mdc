@@ -1,0 +1,10 @@
+---
+description: Coding style and function conventions
+alwaysApply: true
+---
+
+# Coding Style & Functions
+
+- **Named Functions:** Use ES6 named functions for components and top-level logic (e.g., `export function MyComponent() {}`).
+- **Arrow Functions:** Use arrow functions only for inline callbacks, array methods (`.map()`, `.filter()`), or within higher-order functions.
+- **Clean Code:** Prioritize readability and DRY. If a logic pattern is used more than twice, extract it into a reusable hook or utility.

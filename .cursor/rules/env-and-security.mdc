@@ -1,0 +1,10 @@
+---
+description: Environment variable validation and secrets hygiene
+alwaysApply: true
+---
+
+# Environment Variables & Security
+
+- **Validation:** All env vars must be validated in `src/env.ts` using a Zod schema. Throw a descriptive error on missing or invalid values at build/runtime.
+- **Documentation:** When a new env var is added to `src/env.ts`, prompt to add a placeholder to `.env.example`.
+- **Git Safety:** Any new sensitive files (`.env.local`, `.pnpm-debug.log`, etc.) must be added to `.gitignore`.
