@@ -1,0 +1,22 @@
+---
+description: Always use shadcn/ui as the component library
+globs: **/*.tsx, **/*.ts
+alwaysApply: true
+---
+
+# Use shadcn/ui as Component Library
+
+Always prefer shadcn/ui components over building from scratch or using other UI libraries.
+
+- Install components via `npx shadcn@latest add <component>`
+- Import from `@/components/ui/<component>`
+- Use Tailwind CSS for any custom styling on top of shadcn primitives
+- Never use MUI, Chakra UI, Ant Design, or other UI libraries — shadcn/ui only
+
+```tsx
+// ❌ BAD — custom or third-party button
+import { Button } from '@mui/material';
+
+// ✅ GOOD — shadcn/ui button
+import { Button } from '@/components/ui/button';
+```

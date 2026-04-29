@@ -1,0 +1,25 @@
+---
+description: FastAPI async conventions — non-blocking I/O only
+globs: apps/ai/**/*.py
+alwaysApply: false
+---
+
+# FastAPI Async Conventions
+
+- **Always `async def`** for route handlers and service methods that do any I/O.
+- **No blocking I/O:** Never use `requests`, `time.sleep`, or synchronous file/DB calls inside async functions. Use async alternatives:
+  - HTTP calls → `httpx.AsyncClient`
+  - Database → `asyncpg` or SQLAlchemy async session
+  - File I/O → `aiofiles`
+- **CPU-bound work** (embeddings, heavy compute) → offload with `asyncio.to_thread()` or a background task.
+
+```python
+# ❌ BAD — blocks the event loop
+import requests
+response = requests.get("https://api.openai.com/...")
+
+# ✅ GOOD — non-blocking
+import httpx
+async with httpx.AsyncClient() as client:
+    response = await client.get("https://api.openai.com/...")
+```
