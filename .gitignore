@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+.next/
+dist/
+build/
+out/
+*.egg-info/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Turbo
+.turbo/
+
+# Env files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python venv
+.venv/
+venv/
+
+# IDE
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
