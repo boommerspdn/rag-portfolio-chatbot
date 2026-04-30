@@ -3,13 +3,31 @@ services:
     image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: get_to_know_me
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  ai:
+    build:
+      context: apps/ai
+      dockerfile: Dockerfile
+    env_file: apps/ai/.env
+    environment:
+      # Override the localhost URL from .env to reach the db service inside compose
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # ADC credentials mounted from the host gcloud CLI config (local dev only)
+      # On Cloud Run this var is omitted — the attached service account is used instead
+      GOOGLE_APPLICATION_CREDENTIALS: /app/config/gcloud/application_default_credentials.json
+    ports:
+      - "8000:8000"
+    volumes:
+      - "${GCLOUD_CONFIG_DIR}:/app/config/gcloud:ro"
+    depends_on:
+      - db
 
 volumes:
   pgdata:
