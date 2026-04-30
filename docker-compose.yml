@@ -29,5 +29,17 @@ services:
     depends_on:
       - db
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      PORT: 3000
+      AI_BASE_URL: http://ai:8000
+    ports:
+      - "3002:3000"
+    depends_on:
+      - ai
+
 volumes:
   pgdata:
