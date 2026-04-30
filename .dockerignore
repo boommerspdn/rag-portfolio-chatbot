@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/.pytest_cache
+**/__pycache__
+.git
+.cursor
+pnpm-debug.log
+npm-debug.log
+yarn-debug.log
+yarn-error.log
