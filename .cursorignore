@@ -1,0 +1,9 @@
+# Env files (any folder)
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.*
+
+# Allow env templates/examples
+!**/.env.example
+!**/.env.*.example
