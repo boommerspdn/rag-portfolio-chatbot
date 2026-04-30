@@ -1,12 +1,15 @@
 from collections.abc import AsyncGenerator
 
-from openai import AsyncOpenAI
+from vertexai.generative_models import GenerativeModel, GenerationConfig, Content, Part
 
 from app.config import settings
 
-_client = AsyncOpenAI(api_key=settings.openai_api_key)
+_model = GenerativeModel(
+    settings.chat_model,
+    generation_config=GenerationConfig(temperature=0.7, max_output_tokens=1024),
+)
 
-SYSTEM_PROMPT = """You are {name}. Answer every question in first person, as if you are
+SYSTEM_PROMPT = """You are Boom. Answer every question in first person, as if you are
 personally responding. Be conversational, genuine, and concise. Base your answers only on
 the context provided. If the context doesn't cover the question, say so honestly rather
 than making things up.
@@ -17,20 +20,20 @@ Context:
 
 
 async def stream_answer(question: str, chunks: list[dict]) -> AsyncGenerator[str, None]:
-    """Stream the LLM answer token-by-token using the retrieved context chunks."""
+    """Stream the Gemini answer token-by-token using the retrieved context chunks."""
     context = "\n\n---\n\n".join(c["content"] for c in chunks)
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT.format(name="Boom", context=context)},
-        {"role": "user", "content": question},
-    ]
+    system_instruction = SYSTEM_PROMPT.format(context=context)
 
-    stream = await _client.chat.completions.create(
-        model=settings.chat_model,
-        messages=messages,
-        stream=True,
+    model_with_system = GenerativeModel(
+        settings.chat_model,
+        system_instruction=system_instruction,
+        generation_config=GenerationConfig(temperature=0.7, max_output_tokens=1024),
     )
 
-    async for event in stream:
-        delta = event.choices[0].delta.content
-        if delta:
-            yield delta
+    contents = [Content(role="user", parts=[Part.from_text(question)])]
+
+    async for response in await model_with_system.generate_content_async(
+        contents, stream=True
+    ):
+        if response.text:
+            yield response.text
