@@ -7,7 +7,7 @@ Usage:
 Steps:
     1. Read all .md / .txt files from DOCS_DIR
     2. Chunk each file with a sliding window (tiktoken-aware)
-    3. Embed each chunk with text-embedding-3-small
+    3. Embed each chunk with Vertex AI text-embedding-005 (768 dims)
     4. Upsert into PostgreSQL pgvector `chunks` table
 """
 
@@ -18,19 +18,22 @@ from pathlib import Path
 
 import asyncpg
 import tiktoken
+import vertexai
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
+from vertexai.preview.language_models import TextEmbeddingInput, TextEmbeddingModel
 
 load_dotenv()
 
 DATABASE_URL: str = os.environ["DATABASE_URL"]
-OPENAI_API_KEY: str = os.environ["OPENAI_API_KEY"]
-EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+GOOGLE_CLOUD_PROJECT: str = os.environ["GOOGLE_CLOUD_PROJECT"]
+GOOGLE_CLOUD_LOCATION: str = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-004")
 CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "512"))
 CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "64"))
 DOCS_DIR: Path = Path(os.getenv("DOCS_DIR", "../../docs"))
 
-openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+vertexai.init(project=GOOGLE_CLOUD_PROJECT, location=GOOGLE_CLOUD_LOCATION)
+_embed_model = TextEmbeddingModel.from_pretrained(EMBEDDING_MODEL)
 tokenizer = tiktoken.get_encoding("cl100k_base")
 
 CREATE_TABLE_SQL = """
@@ -41,7 +44,7 @@ CREATE TABLE IF NOT EXISTS chunks (
     source      TEXT NOT NULL,
     content     TEXT NOT NULL,
     metadata    JSONB NOT NULL DEFAULT '{}',
-    embedding   vector(1536)
+    embedding   vector(768)
 );
 
 CREATE INDEX IF NOT EXISTS chunks_embedding_idx
@@ -62,9 +65,13 @@ def chunk_text(text: str) -> list[str]:
     return chunks
 
 
-async def embed_batch(texts: list[str]) -> list[list[float]]:
-    response = await openai_client.embeddings.create(model=EMBEDDING_MODEL, input=texts)
-    return [item.embedding for item in response.data]
+_EMBEDDING_DIM = 768
+
+
+def embed_batch(texts: list[str]) -> list[list[float]]:
+    inputs = [TextEmbeddingInput(t, task_type="RETRIEVAL_DOCUMENT") for t in texts]
+    results = _embed_model.get_embeddings(inputs, output_dimensionality=_EMBEDDING_DIM)
+    return [r.values for r in results]
 
 
 def chunk_id(source: str, index: int, content: str) -> str:
@@ -75,7 +82,7 @@ def chunk_id(source: str, index: int, content: str) -> str:
 async def ingest_file(conn: asyncpg.Connection, path: Path) -> int:
     text = path.read_text(encoding="utf-8")
     chunks = chunk_text(text)
-    embeddings = await embed_batch(chunks)
+    embeddings = embed_batch(chunks)
 
     records = [
         (
