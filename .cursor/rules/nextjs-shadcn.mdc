@@ -1,7 +1,7 @@
 ---
 description: Always use shadcn/ui as the component library
 globs: **/*.tsx, **/*.ts
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Use shadcn/ui as Component Library

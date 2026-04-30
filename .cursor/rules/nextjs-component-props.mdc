@@ -1,7 +1,7 @@
 ---
 description: Components must extend their underlying HTML element's props
 globs: **/*.tsx
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Extend HTML Element Props in Components
