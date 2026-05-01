@@ -36,6 +36,7 @@ services:
     environment:
       PORT: 3000
       AI_BASE_URL: http://ai:8000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     ports:
       - "3002:3000"
     depends_on:
