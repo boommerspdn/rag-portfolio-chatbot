@@ -40,7 +40,11 @@ export function ChatMessage({
         </div>
         {showCursor ? (
           <span className="inline-block w-[0.5ch] align-baseline">
-            <span className="inline-block h-[1.1em] w-[2px] translate-y-[2px] animate-pulse bg-(--ds-accent)" />
+            <span className="inline-flex -translate-y-px items-center gap-1 align-baseline">
+              <span className="inline-block size-2 animate-pulse rounded-full bg-(--ds-accent) [animation-delay:-0.3s] [animation-duration:0.9s]" />
+              <span className="inline-block size-2 animate-pulse rounded-full bg-(--ds-accent) [animation-delay:-0.15s] [animation-duration:0.9s]" />
+              <span className="inline-block size-2 animate-pulse rounded-full bg-(--ds-accent) [animation-duration:0.9s]" />
+            </span>
           </span>
         ) : null}
       </div>
