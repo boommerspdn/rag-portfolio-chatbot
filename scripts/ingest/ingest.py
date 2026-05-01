@@ -14,6 +14,7 @@ Steps:
 import asyncio
 import hashlib
 import os
+import uuid
 from pathlib import Path
 
 import asyncpg
@@ -30,26 +31,49 @@ GOOGLE_CLOUD_LOCATION: str = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-004")
 CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "512"))
 CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "64"))
-DOCS_DIR: Path = Path(os.getenv("DOCS_DIR", "../../docs"))
+REPO_ROOT: Path = Path(__file__).resolve().parents[2]
+_docs_dir_raw = os.getenv("DOCS_DIR")
+if _docs_dir_raw in {"../../docs", "..\\..\\docs"}:
+    _docs_dir_raw = None
+DOCS_DIR: Path = Path(_docs_dir_raw) if _docs_dir_raw else (REPO_ROOT / "docs")
 
 vertexai.init(project=GOOGLE_CLOUD_PROJECT, location=GOOGLE_CLOUD_LOCATION)
 _embed_model = TextEmbeddingModel.from_pretrained(EMBEDDING_MODEL)
 tokenizer = tiktoken.get_encoding("cl100k_base")
 
+INGEST_RUN_ID = uuid.uuid4()
+
 CREATE_TABLE_SQL = """
 CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS ingest_runs (
+    id          UUID PRIMARY KEY,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    is_active   BOOLEAN NOT NULL DEFAULT FALSE
+);
 
 CREATE TABLE IF NOT EXISTS chunks (
     id          TEXT PRIMARY KEY,
     source      TEXT NOT NULL,
     content     TEXT NOT NULL,
     metadata    JSONB NOT NULL DEFAULT '{}',
+    ingest_run_id UUID,
+    ingested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     embedding   vector(768)
 );
 
 CREATE INDEX IF NOT EXISTS chunks_embedding_idx
     ON chunks USING ivfflat (embedding vector_cosine_ops)
     WITH (lists = 100);
+
+ALTER TABLE chunks
+    ADD COLUMN IF NOT EXISTS ingest_run_id UUID;
+
+ALTER TABLE chunks
+    ADD COLUMN IF NOT EXISTS ingested_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+CREATE INDEX IF NOT EXISTS chunks_ingest_run_id_idx
+    ON chunks (ingest_run_id);
 """
 
 
@@ -90,6 +114,7 @@ async def ingest_file(conn: asyncpg.Connection, path: Path) -> int:
             str(path.relative_to(DOCS_DIR)),
             chunk,
             "{}",
+            str(INGEST_RUN_ID),
             str(embedding),
         )
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))
@@ -97,11 +122,13 @@ async def ingest_file(conn: asyncpg.Connection, path: Path) -> int:
 
     await conn.executemany(
         """
-        INSERT INTO chunks (id, source, content, metadata, embedding)
-        VALUES ($1, $2, $3, $4::jsonb, $5::vector)
+        INSERT INTO chunks (id, source, content, metadata, ingest_run_id, embedding)
+        VALUES ($1, $2, $3, $4::jsonb, $5::uuid, $6::vector)
         ON CONFLICT (id) DO UPDATE
             SET content   = EXCLUDED.content,
                 metadata  = EXCLUDED.metadata,
+                ingest_run_id = EXCLUDED.ingest_run_id,
+                ingested_at = now(),
                 embedding = EXCLUDED.embedding
         """,
         records,
@@ -118,10 +145,17 @@ async def main() -> None:
     conn = await asyncpg.connect(DATABASE_URL)
     try:
         await conn.execute(CREATE_TABLE_SQL)
+
+        await conn.execute("UPDATE ingest_runs SET is_active = FALSE WHERE is_active = TRUE;")
+        await conn.execute(
+            "INSERT INTO ingest_runs (id, is_active) VALUES ($1::uuid, TRUE);",
+            str(INGEST_RUN_ID),
+        )
+
         total = 0
         for path in doc_files:
             count = await ingest_file(conn, path)
-            print(f"  ✓ {path.name} → {count} chunks")
+            print(f"  OK {path.name} -> {count} chunks")
             total += count
         print(f"\nIngested {total} chunks from {len(doc_files)} files.")
     finally:
