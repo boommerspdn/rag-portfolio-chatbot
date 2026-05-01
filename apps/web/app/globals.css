@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 :root {
+  /* Tell the UA this page is light-only so Chrome/Edge/Android “auto dark”
+     does not remap backgrounds and text (would otherwise look like dark mode). */
+  color-scheme: light;
   --background: #fafafa;
   --foreground: #111827;
 
