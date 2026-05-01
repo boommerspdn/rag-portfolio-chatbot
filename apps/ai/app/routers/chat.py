@@ -18,7 +18,33 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)) -> Streami
     chunks = await retrieve_chunks(body.message, db)
 
     async def event_stream():
-        async for token in stream_answer(body.message, chunks):
+        sources_payload = []
+        for c in chunks:
+            meta = c.get("metadata") or {}
+            if not isinstance(meta, dict):
+                meta = {}
+            filename = (
+                meta.get("filename")
+                or meta.get("source")
+                or c.get("source")
+                or "unknown"
+            )
+            score_raw = c.get("score")
+            try:
+                score = float(score_raw) if score_raw is not None else 0.0
+            except (TypeError, ValueError):
+                score = 0.0
+            content = c.get("content") or ""
+            sources_payload.append(
+                {"filename": str(filename), "score": score, "content": str(content)}
+            )
+        yield f"data: {json.dumps({'sources': sources_payload})}\n\n"
+
+        async for token in stream_answer(
+            body.message,
+            chunks,
+            [m.model_dump() for m in body.history],
+        ):
             yield f"data: {json.dumps({'delta': token})}\n\n"
         yield "data: [DONE]\n\n"
 

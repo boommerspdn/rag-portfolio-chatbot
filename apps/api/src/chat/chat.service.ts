@@ -1,8 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { env } from '../env';
 
+type ChatRole = 'user' | 'assistant';
+
+interface ChatHistoryMessage {
+  role: ChatRole;
+  content: string;
+}
+
 interface UpstreamChatBody {
   message: string;
+  history: ChatHistoryMessage[];
   session_id: string | null;
 }
 

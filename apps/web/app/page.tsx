@@ -11,18 +11,13 @@ import {
 import { ChatMessage, type ChatMessageModel } from "../components/chat-message";
 import { SourceCard, type SourceModel } from "../components/source-card";
 import { SuggestedQuestions } from "../components/suggested-questions";
+import { streamChat, type ChatHistoryMessage } from "../lib/chat-stream";
 import { cn } from "../lib/cn";
+import { clientEnv, clientEnvError } from "../lib/env";
 
 type UiMessage = ChatMessageModel & {
   id: string;
   createdAt: Date;
-};
-
-type ChatApiSource = SourceModel;
-
-type ChatApiResponse = {
-  answer: string;
-  sources: ChatApiSource[];
 };
 
 function uid() {
@@ -33,33 +28,16 @@ function formatTime(date: Date) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-async function ask(question: string): Promise<ChatApiResponse> {
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Request failed (${res.status}).`);
-  }
-
-  const data = (await res.json()) as unknown;
-  if (
-    typeof data !== "object" ||
-    data === null ||
-    !("answer" in data) ||
-    !("sources" in data) ||
-    typeof (data as { answer?: unknown }).answer !== "string" ||
-    !Array.isArray((data as { sources?: unknown }).sources)
-  ) {
-    throw new Error("Invalid response from server.");
-  }
-
-  return data as ChatApiResponse;
-}
-
 type MobileTab = "chat" | "sources";
+
+const ERROR_ASSISTANT_COPY =
+  "Sorry — something went wrong while generating an answer. Please try again.";
+
+function toHistoryMessage(m: ChatMessageModel): ChatHistoryMessage | null {
+  const content = m.content.trim();
+  if (!content) return null;
+  return { role: m.role, content };
+}
 
 export default function Home() {
   const [tab, setTab] = React.useState<MobileTab>("chat");
@@ -67,10 +45,13 @@ export default function Home() {
   const [messages, setMessages] = React.useState<UiMessage[]>([]);
   const [sources, setSources] = React.useState<SourceModel[]>([]);
   const [isSending, setIsSending] = React.useState(false);
-  const modelLabel = process.env.NEXT_PUBLIC_MODEL_LABEL || "Sonnet 4.6";
+  const [streamingId, setStreamingId] = React.useState<string | null>(null);
+  const modelLabel = clientEnv.NEXT_PUBLIC_MODEL_LABEL;
+  const hasApiUrl = clientEnv.NEXT_PUBLIC_API_URL.length > 0;
 
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const composerRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   const suggestedQuestions = React.useMemo(
     () => [
@@ -82,6 +63,7 @@ export default function Home() {
   );
 
   const suggestedVisible = messages.length === 0;
+  const canSend = hasApiUrl && !isSending && input.trim().length > 0;
 
   function scrollToBottom() {
     const el = listRef.current;
@@ -91,7 +73,7 @@ export default function Home() {
 
   React.useEffect(() => {
     scrollToBottom();
-  }, [messages.length]);
+  }, [messages]);
 
   function autosizeComposer() {
     const el = composerRef.current;
@@ -104,7 +86,6 @@ export default function Home() {
     const borderTopPx = Number.parseFloat(style.borderTopWidth);
     const borderBottomPx = Number.parseFloat(style.borderBottomWidth);
 
-    // Fallback if computed style returns "normal"
     const safeLineHeight = Number.isFinite(lineHeightPx) && lineHeightPx > 0 ? lineHeightPx : 24;
     const maxHeight =
       safeLineHeight * 9 +
@@ -120,7 +101,6 @@ export default function Home() {
 
   React.useEffect(() => {
     autosizeComposer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input]);
 
   async function onSend(question: string) {
@@ -135,48 +115,92 @@ export default function Home() {
       content: trimmed,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const assistantId = uid();
+    const assistantMessage: UiMessage = {
+      id: assistantId,
+      createdAt: new Date(),
+      role: "assistant",
+      content: "",
+    };
+
+    abortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setInput("");
     setIsSending(true);
+    setStreamingId(assistantId);
 
     try {
-      const data = await ask(trimmed);
+      const history: ChatHistoryMessage[] = [...messages, userMessage]
+        .map(toHistoryMessage)
+        .filter((m): m is ChatHistoryMessage => m !== null)
+        .slice(-20);
 
-      const assistantMessage: UiMessage = {
-        id: uid(),
-        createdAt: new Date(),
-        role: "assistant",
-        content: data.answer,
-      };
-
-      setSources(data.sources);
-      setMessages((prev) => [...prev, assistantMessage]);
+      await streamChat(trimmed, history, {
+        signal: abortController.signal,
+        onSources: (next) => {
+          setSources(next);
+        },
+        onDelta: (delta) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, content: m.content + delta } : m,
+            ),
+          );
+        },
+      });
     } catch {
-      const assistantMessage: UiMessage = {
-        id: uid(),
-        createdAt: new Date(),
-        role: "assistant",
-        content:
-          "Sorry — something went wrong while generating an answer. Please try again.",
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      if (abortController.signal.aborted) {
+        return;
+      }
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId ? { ...m, content: ERROR_ASSISTANT_COPY } : m,
+        ),
+      );
     } finally {
-      setIsSending(false);
+      if (!abortController.signal.aborted) {
+        setStreamingId(null);
+        setIsSending(false);
+      }
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
     }
   }
 
   function onReset() {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     setInput("");
     setMessages([]);
     setSources([]);
     setIsSending(false);
+    setStreamingId(null);
     setTab("chat");
   }
 
   return (
     <div className="h-svh min-h-svh overflow-hidden bg-(--ds-bg) text-(--ds-text)">
       <div className="flex h-full min-h-0 w-full flex-col px-5 md:px-10 py-4 md:py-0">
-        {/* Mobile header (full width) */}
+        {!hasApiUrl ? (
+          <div className="mb-4 rounded-[12px] border border-(--ds-border) bg-(--ds-panel) px-4 py-3 text-sm text-(--ds-text)">
+            <div className="font-semibold">Configuration needed</div>
+            <div className="mt-1 text-(--ds-muted)">
+              Set <span className="font-mono">NEXT_PUBLIC_API_URL</span> in{" "}
+              <span className="font-mono">apps/web/.env</span> (see{" "}
+              <span className="font-mono">apps/web/.env.example</span>).
+            </div>
+            {clientEnvError?.NEXT_PUBLIC_API_URL?.length ? (
+              <div className="mt-2 text-xs text-(--ds-muted)">
+                {clientEnvError.NEXT_PUBLIC_API_URL.join(" ")}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <header className="flex items-start justify-between gap-4 md:hidden">
           <div>
             <div className="text-[22px] md:text-[32px] font-semibold leading-[1.05] tracking-[-0.02em]">
@@ -248,95 +272,99 @@ export default function Home() {
                 tab !== "chat" ? "hidden md:flex" : "flex",
               )}
             >
-            {/* Desktop/tablet header (left column) */}
-            <header className="hidden items-start justify-between gap-4 md:flex">
-              <div>
-                <div className="text-[32px] font-semibold leading-[1.05] tracking-[-0.02em]">
-                  Sapondanai Thongchua
-                </div>
-                <div className="mt-1 text-sm leading-6 text-(--ds-muted)">
-                  Ask me anything about my experience
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={onReset}
-                className="inline-flex items-center gap-2 rounded-[10px] border border-(--ds-border) bg-(--ds-panel) px-3 py-2 text-sm font-medium text-(--ds-text) hover:bg-(--ds-hover)"
-              >
-                <ArrowPathIcon className="h-4 w-4 text-(--ds-muted)" aria-hidden="true" />
-                Reset
-              </button>
-            </header>
-
-            <div
-              ref={listRef}
-              className="flex-1 min-h-0 overflow-auto px-0 pb-4 pt-6"
-            >
-              <div className="space-y-8">
-                {messages.map((m) => (
-                  <div key={m.id} className="space-y-1">
-                    <ChatMessage message={m} />
-                    <div
-                      className={cn(
-                        "text-xs text-(--ds-muted)",
-                        m.role === "user" ? "text-right" : "text-left pl-5",
-                      )}
-                    >
-                      {formatTime(m.createdAt)}
-                    </div>
+              <header className="hidden items-start justify-between gap-4 md:flex">
+                <div>
+                  <div className="text-[32px] font-semibold leading-[1.05] tracking-[-0.02em]">
+                    Sapondanai Thongchua
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="mt-1 text-sm leading-6 text-(--ds-muted)">
+                    Ask me anything about my experience
+                  </div>
+                </div>
 
-            <div className="mt-auto">
-              <SuggestedQuestions
-                questions={suggestedQuestions}
-                visible={suggestedVisible}
-                onPick={(q) => onSend(q)}
-              />
+                <button
+                  type="button"
+                  onClick={onReset}
+                  className="inline-flex items-center gap-2 rounded-[10px] border border-(--ds-border) bg-(--ds-panel) px-3 py-2 text-sm font-medium text-(--ds-text) hover:bg-(--ds-hover)"
+                >
+                  <ArrowPathIcon className="h-4 w-4 text-(--ds-muted)" aria-hidden="true" />
+                  Reset
+                </button>
+              </header>
 
-              <form
-                className="flex flex-col gap-2 rounded-[12px] border border-(--ds-border) bg-(--ds-panel) px-4 py-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void onSend(input);
-                }}
+              <div
+                ref={listRef}
+                className="flex-1 min-h-0 overflow-auto px-0 pb-4 pt-6"
               >
-                <textarea
-                  ref={composerRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void onSend(input);
-                    }
-                  }}
-                  placeholder="Type your question..."
-                  rows={1}
-                  className="min-h-10 max-h-[228px] w-full resize-none overflow-x-hidden bg-transparent text-[15px] leading-6 text-(--ds-text) placeholder:text-(--ds-muted) outline-none"
-                  disabled={isSending}
+                <div className="space-y-8">
+                  {messages.map((m) => (
+                    <div key={m.id} className="space-y-1">
+                      <ChatMessage
+                        message={m}
+                        showCursor={
+                          m.role === "assistant" && m.id === streamingId
+                        }
+                      />
+                      <div
+                        className={cn(
+                          "text-xs text-(--ds-muted)",
+                          m.role === "user" ? "text-right" : "text-left pl-5",
+                        )}
+                      >
+                        {formatTime(m.createdAt)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-auto">
+                <SuggestedQuestions
+                  questions={suggestedQuestions}
+                  visible={suggestedVisible}
+                  onPick={(q) => onSend(q)}
                 />
 
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium text-(--ds-muted)">
-                    {modelLabel}
-                  </div>
+                <form
+                  className="flex flex-col gap-2 rounded-[12px] border border-(--ds-border) bg-(--ds-panel) px-4 py-3"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void onSend(input);
+                  }}
+                >
+                  <textarea
+                    ref={composerRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void onSend(input);
+                      }
+                    }}
+                    placeholder="Type your question..."
+                    rows={1}
+                    className="min-h-10 max-h-[228px] w-full resize-none overflow-x-hidden bg-transparent text-[15px] leading-6 text-(--ds-text) placeholder:text-(--ds-muted) outline-none"
+                    disabled={isSending}
+                  />
 
-                  <button
-                    type="submit"
-                    aria-label="Send message"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-(--ds-accent) text-white disabled:opacity-50"
-                    disabled={isSending || input.trim().length === 0}
-                  >
-                    <PaperAirplaneIcon className="h-5 w-5 text-white" aria-hidden="true" />
-                  </button>
-                </div>
-              </form>
-            </div>
-          </section>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-medium text-(--ds-muted)">
+                      {modelLabel}
+                    </div>
+
+                    <button
+                      type="submit"
+                      aria-label="Send message"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-(--ds-accent) text-white disabled:opacity-50"
+                      disabled={!canSend}
+                    >
+                      <PaperAirplaneIcon className="h-5 w-5 text-white" aria-hidden="true" />
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </section>
 
             <aside
               className={cn(
@@ -344,21 +372,25 @@ export default function Home() {
                 tab !== "sources" ? "hidden md:flex" : "block md:flex",
               )}
             >
-            {/* Desktop/tablet header (right column) */}
-            <div className="pt-6 md:pt-0">
-              <div className="text-[17px] font-semibold leading-6">Sources</div>
-              <div className="mt-3 h-px w-full bg-(--ds-border)" />
-            </div>
+              <div className="pt-6 md:pt-0">
+                <div className="text-[17px] font-semibold leading-6">Sources</div>
+                <div className="mt-3 h-px w-full bg-(--ds-border)" />
+              </div>
 
-            <div className="mt-4 space-y-4 pb-10 md:flex-1 md:min-h-0 md:overflow-auto">
-              {sources.length === 0 ? (
-                <div className="text-sm leading-6 text-(--ds-muted)">
-                  Ask a question to see the supporting sources here.
-                </div>
-              ) : (
-                sources.map((s) => <SourceCard key={s.filename} source={s} />)
-              )}
-            </div>
+              <div className="mt-4 space-y-4 pb-10 md:flex-1 md:min-h-0 md:overflow-auto">
+                {sources.length === 0 ? (
+                  <div className="text-sm leading-6 text-(--ds-muted)">
+                    Ask a question to see the supporting sources here.
+                  </div>
+                ) : (
+                  sources.map((s, index) => (
+                    <SourceCard
+                      key={`${s.filename}-${index}`}
+                      source={s}
+                    />
+                  ))
+                )}
+              </div>
             </aside>
           </div>
         </div>
