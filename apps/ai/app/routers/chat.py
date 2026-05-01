@@ -11,17 +11,11 @@ from app.services.retrieval import retrieve_chunks
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-def expand_retrieval_query(message: str) -> str:
-    m = message.lower()
-    if "how old" in m or "age" in m:
-        return f"{message}\n\nKeywords: birth year, born, age"
-    return message
-
 
 @router.post("")
 async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)) -> StreamingResponse:
     """Embed → retrieve → generate: streams SSE tokens back to the NestJS gateway."""
-    chunks = await retrieve_chunks(expand_retrieval_query(body.message), db)
+    chunks = await retrieve_chunks(body.message, db)
 
     async def event_stream():
         sources_payload = []
