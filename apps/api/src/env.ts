@@ -6,6 +6,7 @@ const envSchema = z.object({
     .optional()
     .transform((value) => (value ? Number(value) : undefined))
     .pipe(z.number().int().positive().optional()),
+  DATABASE_URL: z.string().min(1).pipe(z.string().url()),
   AI_BASE_URL: z
     .string()
     .optional()
