@@ -10,6 +10,7 @@ import {
 
 import { ChatMessage, type ChatMessageModel } from "../components/chat-message";
 import { SourceCard, type SourceModel } from "../components/source-card";
+import { ScrollArea } from "../components/ui/scroll-area";
 import { SuggestedQuestions } from "../components/suggested-questions";
 import { streamChat, type ChatHistoryMessage } from "../lib/chat-stream";
 import { cn } from "../lib/cn";
@@ -292,11 +293,11 @@ export default function Home() {
                 </button>
               </header>
 
-              <div
-                ref={listRef}
-                className="flex-1 min-h-0 overflow-auto px-0 pb-4 pt-6"
+              <ScrollArea
+                viewportRef={listRef}
+                className="flex-1 min-h-0 px-0 pb-4 pt-6"
               >
-                <div className="space-y-8">
+                <div className="space-y-8 pr-3">
                   {messages.map((m) => (
                     <div key={m.id} className="space-y-1">
                       <ChatMessage
@@ -316,7 +317,7 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </ScrollArea>
 
               <div className="mt-auto">
                 <SuggestedQuestions
@@ -377,20 +378,22 @@ export default function Home() {
                 <div className="mt-3 h-px w-full bg-(--ds-border)" />
               </div>
 
-              <div className="mt-4 space-y-4 pb-10 md:flex-1 md:min-h-0 md:overflow-auto">
-                {sources.length === 0 ? (
-                  <div className="text-sm leading-6 text-(--ds-muted)">
-                    Ask a question to see the supporting sources here.
-                  </div>
-                ) : (
-                  sources.map((s, index) => (
-                    <SourceCard
-                      key={`${s.filename}-${index}`}
-                      source={s}
-                    />
-                  ))
-                )}
-              </div>
+              <ScrollArea className="mt-4 min-h-0 flex-1 md:min-h-0">
+                <div className="space-y-4 pb-10 pr-3">
+                  {sources.length === 0 ? (
+                    <div className="text-sm leading-6 text-(--ds-muted)">
+                      Ask a question to see the supporting sources here.
+                    </div>
+                  ) : (
+                    sources.map((s, index) => (
+                      <SourceCard
+                        key={`${s.filename}-${index}`}
+                        source={s}
+                      />
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
             </aside>
           </div>
         </div>
