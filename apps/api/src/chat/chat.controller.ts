@@ -6,8 +6,14 @@ import type { ReadableStream as NodeReadableStream } from 'stream/web';
 import { z } from 'zod';
 import { ChatService } from './chat.service';
 
+const chatHistoryMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+});
+
 const chatRequestSchema = z.object({
   message: z.string().min(1),
+  history: z.array(chatHistoryMessageSchema).default([]),
   sessionId: z.string().min(1).optional(),
 });
 
@@ -27,7 +33,11 @@ export class ChatController {
     req.on('close', () => abortController.abort());
 
     const upstreamResponse = await this.chatService.createUpstreamChatStream(
-      { message: parsed.message, session_id: parsed.sessionId ?? null },
+      {
+        message: parsed.message,
+        history: parsed.history,
+        session_id: parsed.sessionId ?? null,
+      },
       abortController.signal,
     );
 
@@ -57,4 +67,3 @@ export class ChatController {
     await pipeline(readable, res);
   }
 }
-

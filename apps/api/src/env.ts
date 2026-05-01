@@ -11,6 +11,7 @@ const envSchema = z.object({
     .optional()
     .transform((value) => value ?? 'http://ai:8000')
     .pipe(z.string().url()),
+  WEB_ORIGIN: z.string().url().optional(),
 });
 
 export const env = envSchema.parse(process.env);

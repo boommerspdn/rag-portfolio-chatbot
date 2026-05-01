@@ -11,9 +11,16 @@ async def retrieve_chunks(query: str, db: AsyncSession) -> list[dict]:
 
     rows = await db.execute(
         text("""
-            SELECT id, content, metadata,
+            SELECT id, source, content, metadata,
                    1 - (embedding <=> CAST(:vec AS vector)) AS score
             FROM chunks
+            WHERE ingest_run_id = (
+                SELECT id
+                FROM ingest_runs
+                WHERE is_active = TRUE
+                ORDER BY created_at DESC
+                LIMIT 1
+            )
             ORDER BY embedding <=> CAST(:vec AS vector)
             LIMIT :k
         """),

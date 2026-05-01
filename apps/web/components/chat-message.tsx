@@ -6,6 +6,7 @@ export type ChatMessageModel = {
 };
 
 import * as React from "react";
+import ReactMarkdown from "react-markdown";
 
 import { cn } from "../lib/cn";
 
@@ -21,7 +22,6 @@ export function ChatMessage({
   className,
   ...props
 }: ChatMessageProps) {
-
   if (message.role === "user") {
     return (
       <div className={cn("flex justify-end", className)} {...props}>
@@ -35,7 +35,9 @@ export function ChatMessage({
   return (
     <div className={cn("flex justify-start", className)} {...props}>
       <div className="max-w-[85%] border-l-2 border-(--ds-accent) pl-3 text-[15px] leading-relaxed text-(--ds-text)">
-        <span className="whitespace-pre-wrap">{message.content}</span>
+        <div className="whitespace-pre-wrap">
+          <ReactMarkdown>{message.content}</ReactMarkdown>
+        </div>
         {showCursor ? (
           <span className="inline-block w-[0.5ch] align-baseline">
             <span className="inline-block h-[1.1em] w-[2px] translate-y-[2px] animate-pulse bg-(--ds-accent)" />
