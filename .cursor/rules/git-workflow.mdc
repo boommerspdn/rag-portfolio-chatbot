@@ -1,0 +1,31 @@
+---
+description: Git branch naming conventions
+alwaysApply: true
+---
+
+# Git Branch Naming
+
+All branches must use a type prefix before the description:
+
+| Prefix | When to use |
+|---|---|
+| `feat/` | New feature or capability |
+| `chore/` | Config, tooling, deps, setup — no production logic |
+| `fix/` | Bug fix |
+| `refactor/` | Restructuring without behaviour change |
+| `docs/` | Documentation only |
+
+```bash
+# ❌ BAD
+git checkout -b cursor-rules
+git checkout -b update-api
+
+# ✅ GOOD
+git checkout -b chore/cursor-rules
+git checkout -b feat/chat-streaming
+git checkout -b fix/sse-disconnect
+```
+
+- Use kebab-case after the prefix
+- Keep the description short (2–4 words)
+- Branch off `main` (or `develop` if it exists)
