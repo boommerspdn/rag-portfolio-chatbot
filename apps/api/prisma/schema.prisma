@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ChatLogStatus {
+  success
+  upstream_error
+  aborted
+  stream_error
+}
+
+model ChatLog {
+  id            String        @id @default(uuid())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  message       String
+  sessionId     String?
+
+  requestId     String?
+  ip            String?
+  userAgent     String?
+
+  rawSse        String        @default("")
+  finalText     String        @default("")
+
+  status        ChatLogStatus
+  upstreamStatus Int?
+  errorDetail   String?
+  durationMs    Int?
+
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([status])
+}
+
+model chunks {
+  id        String                 @id
+  source    String
+  content   String
+  metadata  Json                   @default("{}")
+  embedding Unsupported("vector")?
+
+  @@index([embedding])
+}
+

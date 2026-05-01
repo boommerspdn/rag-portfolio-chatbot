@@ -1,0 +1,2 @@
+-- Baseline migration for existing database schema.
+-- This database already contains the `chunks` table (managed by the AI service).
