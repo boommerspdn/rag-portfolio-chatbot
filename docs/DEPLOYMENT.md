@@ -17,7 +17,7 @@ Store these URLs in **GitHub Actions secrets** (`NEON_DATABASE_URL_API`, `NEON_D
 
 In your existing GCP project:
 
-1. **Enable APIs:** Artifact Registry, Cloud Run, IAM Credentials (Workload Identity Federation), Secret Manager (optional), Cloud Resource Manager.
+1. **Enable APIs:** Artifact Registry, Cloud Run (`run.googleapis.com`), IAM Credentials (Workload Identity Federation), Secret Manager (optional), Cloud Resource Manager. Example: `gcloud services enable run.googleapis.com artifactregistry.googleapis.com iamcredentials.googleapis.com --project=YOUR_PROJECT_ID`.
 2. **Artifact Registry:** Create a Docker repository, e.g. `rag-portfolio-chatbot` in region `us-central1`. Image paths will look like:  
    `us-central1-docker.pkg.dev/PROJECT_ID/rag-portfolio-chatbot/ai:TAG`
 3. **Workload Identity Federation:** Configure GitHub as an identity provider and a **deployer** service account with at least:

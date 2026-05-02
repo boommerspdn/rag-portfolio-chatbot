@@ -114,10 +114,10 @@ jobs:
           region: ${{ vars.GCP_REGION }}
           project_id: ${{ vars.GCP_PROJECT_ID }}
           image: ${{ env.AI_IMAGE }}
-          env_vars_file: /tmp/ai-env.yaml
           flags: >-
             --port=8000
             --allow-unauthenticated
+            --env-vars-file=/tmp/ai-env.yaml
 
       - name: Build and push api image
         run: |
@@ -140,7 +140,7 @@ jobs:
           region: ${{ vars.GCP_REGION }}
           project_id: ${{ vars.GCP_PROJECT_ID }}
           image: ${{ env.API_IMAGE }}
-          env_vars_file: /tmp/api-env.yaml
           flags: >-
             --port=3000
             --allow-unauthenticated
+            --env-vars-file=/tmp/api-env.yaml
