@@ -63,7 +63,7 @@ pnpm install
 pnpm --filter web dev
 ```
 
-Open `http://localhost:3001`.
+Open `http://localhost:3000`.
 
 > The web app reads `NEXT_PUBLIC_API_URL` from `apps/web/.env`.
 
