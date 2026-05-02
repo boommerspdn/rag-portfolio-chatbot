@@ -38,6 +38,9 @@ WORKDIR /app
 
 COPY --from=build /app/deploy/api ./
 
+COPY apps/api/docker-entrypoint.sh ./
+RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
+
 EXPOSE 3000
 
- CMD ["node", "dist/src/main"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
