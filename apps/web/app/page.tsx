@@ -369,7 +369,7 @@ export default function Home() {
 
             <aside
               className={cn(
-                "min-w-0 md:flex md:h-full md:min-h-0 md:flex-col md:border-l md:border-(--ds-border) md:pl-8 md:py-8",
+                "flex min-w-0 min-h-0 h-full flex-col md:border-l md:border-(--ds-border) md:pl-8 md:py-8",
                 tab !== "sources" ? "hidden md:flex" : "block md:flex",
               )}
             >
