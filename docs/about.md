@@ -23,7 +23,13 @@ FastAPI
 Spring Boot
 
 **Tooling & Infrastructure**
-CI/CD with GitHub Actions, Cloud platforms (GCP, AWS), AI APIs (OpenAI, Gemini API, Vertex AI)
+CI/CD with GitHub Actions, Cloud platforms (GCP, AWS), AI APIs (OpenAI API, Gemini API, Vertex AI)
+
+**RAG & AI engineering**
+LangChain; vector retrieval and storage with ChromaDB and pgvector
+
+**Agentic AI development**
+Hands-on experience with agentic coding tools including Claude Code, Cursor, and Windsurf
 
 ## Professional Experience
 
