@@ -1,4 +1,3 @@
-import vertexai
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,11 +7,10 @@ class Settings(BaseSettings):
     database_url: str
     google_cloud_project: str
     google_cloud_location: str
+    google_application_credentials: str | None = None
     embedding_model: str
     chat_model: str
     top_k_chunks: int
 
 
 settings = Settings()
-
-vertexai.init(project=settings.google_cloud_project, location=settings.google_cloud_location)

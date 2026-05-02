@@ -1,13 +1,16 @@
+import asyncio
 from collections.abc import AsyncGenerator
-
-from vertexai.generative_models import GenerativeModel, GenerationConfig, Content, Part
 from datetime import datetime
+
+from google import genai
+from google.genai import types
 
 from app.config import settings
 
-_model = GenerativeModel(
-    settings.chat_model,
-    generation_config=GenerationConfig(temperature=0.7, max_output_tokens=1024),
+client = genai.Client(
+    vertexai=True,
+    project=settings.google_cloud_project,
+    location=settings.google_cloud_location,
 )
 
 SYSTEM_PROMPT = """You are Sapondanai Thongchua (Boommer).
@@ -37,10 +40,27 @@ Context:
 """
 
 
-def history_role_to_vertex_role(role: str) -> str:
+def history_role_to_genai_role(role: str) -> str:
     if role == "assistant":
         return "model"
     return "user"
+
+
+def extract_stream_text(response: object) -> str | None:
+    text = getattr(response, "text", None)
+    if isinstance(text, str) and text:
+        return text
+    candidates = getattr(response, "candidates", None)
+    if not isinstance(candidates, list) or not candidates:
+        return None
+    content = getattr(candidates[0], "content", None)
+    parts = getattr(content, "parts", None)
+    if not isinstance(parts, list) or not parts:
+        return None
+    part_text = getattr(parts[0], "text", None)
+    if isinstance(part_text, str) and part_text:
+        return part_text
+    return None
 
 
 async def stream_answer(
@@ -53,13 +73,7 @@ async def stream_answer(
         current_year=datetime.now().year,
     )
 
-    model_with_system = GenerativeModel(
-        settings.chat_model,
-        system_instruction=system_instruction,
-        generation_config=GenerationConfig(temperature=0.7, max_output_tokens=1024),
-    )
-
-    contents: list[Content] = []
+    contents: list[types.Content] = []
     for m in history or []:
         if not isinstance(m, dict):
             continue
@@ -71,16 +85,38 @@ async def stream_answer(
         if not content:
             continue
         contents.append(
-            Content(
-                role=history_role_to_vertex_role(role_raw),
-                parts=[Part.from_text(content)],
+            types.Content(
+                role=history_role_to_genai_role(role_raw),
+                parts=[types.Part.from_text(text=content)],
             )
         )
 
-    contents.append(Content(role="user", parts=[Part.from_text(question)]))
+    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=question)]))
 
-    async for response in await model_with_system.generate_content_async(
-        contents, stream=True
-    ):
-        if response.text:
-            yield response.text
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue[str | None] = asyncio.Queue()
+
+    def run_stream() -> None:
+        try:
+            for response in client.models.generate_content_stream(
+                model=settings.chat_model,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    max_output_tokens=1024,
+                    system_instruction=system_instruction,
+                ),
+            ):
+                token = extract_stream_text(response)
+                if token:
+                    loop.call_soon_threadsafe(queue.put_nowait, token)
+        finally:
+            loop.call_soon_threadsafe(queue.put_nowait, None)
+
+    asyncio.create_task(asyncio.to_thread(run_stream))
+
+    while True:
+        token = await queue.get()
+        if token is None:
+            break
+        yield token

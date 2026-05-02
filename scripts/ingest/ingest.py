@@ -15,13 +15,14 @@ import asyncio
 import hashlib
 import os
 import uuid
+import re
 from pathlib import Path
 
 import asyncpg
 import tiktoken
-import vertexai
 from dotenv import load_dotenv
-from vertexai.preview.language_models import TextEmbeddingInput, TextEmbeddingModel
+from google import genai
+from google.genai import types
 
 load_dotenv()
 
@@ -37,8 +38,11 @@ if _docs_dir_raw in {"../../docs", "..\\..\\docs"}:
     _docs_dir_raw = None
 DOCS_DIR: Path = Path(_docs_dir_raw) if _docs_dir_raw else (REPO_ROOT / "docs")
 
-vertexai.init(project=GOOGLE_CLOUD_PROJECT, location=GOOGLE_CLOUD_LOCATION)
-_embed_model = TextEmbeddingModel.from_pretrained(EMBEDDING_MODEL)
+client = genai.Client(
+    vertexai=True,
+    project=GOOGLE_CLOUD_PROJECT,
+    location=GOOGLE_CLOUD_LOCATION,
+)
 tokenizer = tiktoken.get_encoding("cl100k_base")
 
 INGEST_RUN_ID = uuid.uuid4()
@@ -77,15 +81,28 @@ CREATE INDEX IF NOT EXISTS chunks_ingest_run_id_idx
 """
 
 
-def chunk_text(text: str) -> list[str]:
-    """Split text into overlapping token-bounded chunks."""
-    tokens = tokenizer.encode(text)
-    chunks: list[str] = []
-    start = 0
-    while start < len(tokens):
-        end = min(start + CHUNK_SIZE, len(tokens))
-        chunks.append(tokenizer.decode(tokens[start:end]))
-        start += CHUNK_SIZE - CHUNK_OVERLAP
+def chunk_text_markdown(text: str) -> list[str]:
+    # Split on ## or ### headers, or --- separators
+    sections = re.split(r'\n(?=#{1,3} |\-{3})', text)
+    
+    chunks = []
+    for section in sections:
+        section = section.strip()
+        if not section:
+            continue
+        # Skip header-only/tiny chunks — must have meaningful content
+        tokens = tokenizer.encode(section)
+        if len(tokens) < 20:  # less than ~15 words is often just a header
+            continue
+        if len(tokens) <= CHUNK_SIZE:
+            chunks.append(section)
+        else:
+            # fall back to sliding window for oversized sections
+            start = 0
+            while start < len(tokens):
+                end = min(start + CHUNK_SIZE, len(tokens))
+                chunks.append(tokenizer.decode(tokens[start:end]))
+                start += CHUNK_SIZE - CHUNK_OVERLAP
     return chunks
 
 
@@ -93,9 +110,15 @@ _EMBEDDING_DIM = 768
 
 
 def embed_batch(texts: list[str]) -> list[list[float]]:
-    inputs = [TextEmbeddingInput(t, task_type="RETRIEVAL_DOCUMENT") for t in texts]
-    results = _embed_model.get_embeddings(inputs, output_dimensionality=_EMBEDDING_DIM)
-    return [r.values for r in results]
+    response = client.models.embed_content(
+        model=EMBEDDING_MODEL,
+        contents=texts,
+        config=types.EmbedContentConfig(
+            task_type="RETRIEVAL_DOCUMENT",
+            output_dimensionality=_EMBEDDING_DIM,
+        ),
+    )
+    return [e.values for e in response.embeddings]
 
 
 def chunk_id(source: str, index: int, content: str) -> str:
@@ -105,7 +128,7 @@ def chunk_id(source: str, index: int, content: str) -> str:
 
 async def ingest_file(conn: asyncpg.Connection, path: Path) -> int:
     text = path.read_text(encoding="utf-8")
-    chunks = chunk_text(text)
+    chunks = chunk_text_markdown(text)
     embeddings = embed_batch(chunks)
 
     records = [
