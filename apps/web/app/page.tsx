@@ -381,8 +381,8 @@ export default function Home() {
               <ScrollArea className="mt-4 min-h-0 flex-1">
                 <div className="space-y-4 pb-10 pr-3">
                   {sources.length === 0 ? (
-                    <div className="text-sm leading-6 text-(--ds-muted)">
-                      Ask a question to see the supporting sources here.
+                    <div className="text-sm text-center leading-6 text-(--ds-muted)">
+                      Ask a question to see the retrieved sources.
                     </div>
                   ) : (
                     sources.map((s, index) => (
