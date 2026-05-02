@@ -4,6 +4,7 @@
 
 My name is Sapondanai Thongchua — nickname Boommer. I am a full-stack developer based in Thailand, born in 10 January 2001, graduated from Mahanakorn University of Technology. During my studies I attended weekend classes so I could work full-time on weekdays, which gave me real-world production experience before I graduated.
 
+**Gender:** Male
 **Contact:** sapondanai.t@gmail.com | 090-323-1834
 **Portfolio:** https://sapondanai-t.vercel.app/
 **GitHub:** https://github.com/boommerspdn

@@ -16,10 +16,20 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)) -> StreamingResponse:
     """Embed → retrieve → generate: streams SSE tokens back to the NestJS gateway."""
     chunks = await retrieve_chunks(body.message, db)
+    min_score = 0.5
+    chunks_above_threshold: list[dict] = []
+    for c in chunks:
+        score_raw = c.get("score")
+        try:
+            score = float(score_raw) if score_raw is not None else 0.0
+        except (TypeError, ValueError):
+            score = 0.0
+        if score >= min_score:
+            chunks_above_threshold.append(c)
 
     async def event_stream():
         sources_payload = []
-        for c in chunks:
+        for c in chunks_above_threshold:
             meta = c.get("metadata") or {}
             if not isinstance(meta, dict):
                 meta = {}
@@ -42,7 +52,7 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)) -> Streami
 
         async for token in stream_answer(
             body.message,
-            chunks,
+            chunks_above_threshold,
             [m.model_dump() for m in body.history],
         ):
             yield f"data: {json.dumps({'delta': token})}\n\n"

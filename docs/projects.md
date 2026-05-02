@@ -1,5 +1,17 @@
 # Projects
 
+## RAG Portfolio Chatbot — Personal Project (Current)
+
+A recruiter-friendly, production-structured portfolio app with an AI chat experience that answers questions about me from curated internal docs (not generic prompts).
+
+Highlights:
+- **Full-stack monorepo:** Next.js (web), NestJS (API gateway), and a FastAPI AI service.
+- **RAG pipeline:** embed → retrieve → generate grounded answers from project/resume content.
+- **Streaming UX:** AI responses stream back via Server-Sent Events (SSE) for fast, real-time feedback.
+- **Production-minded setup:** clear separation of concerns, env examples per app, and type-safe TS patterns (with validation as a first-class concern).
+
+---
+
 ## Ansell Thailand Co., Ltd — Internship (Continuous Improvement Department)
 
 ### Risk Management App
