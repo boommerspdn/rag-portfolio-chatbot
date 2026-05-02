@@ -67,7 +67,7 @@ If `google-github-actions/auth` fails with an STS error about **audience**, the 
 
 1. Import the GitHub repo into Vercel.
 2. **Root Directory (choose one):**
-   - **Repository root (`.`)** — Vercel picks up root [vercel.json](../vercel.json) (`installCommand` / `buildCommand`). Framework detection may still need **Next.js** selected in the project if the dashboard does not auto-detect.
+   - **Repository root (`.`)** — Vercel picks up root [vercel.json](../vercel.json) (`installCommand` / `buildCommand` / `outputDirectory`). Root `package.json` includes **`next`** as a devDependency so Vercel can detect Next.js while `turbo run build --filter=web` still builds `apps/web`. Deploy from the repo root (`vercel deploy --prod`) so the full monorepo is uploaded.
    - **`apps/web`** — root `vercel.json` is **ignored**. Set in project settings:
      - **Install command:** `cd ../.. && pnpm install --frozen-lockfile`
      - **Build command:** `cd ../.. && pnpm exec turbo run build --filter=web`
