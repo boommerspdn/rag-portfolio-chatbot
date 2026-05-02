@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-Copy `.env.example` to `.env` and set `NEXT_PUBLIC_API_URL` to your NestJS API (default `http://localhost:3000`). The API listens on port **3000** by default; this app’s dev server uses **3001** to avoid a port clash (`pnpm dev` runs `next dev -p 3001`).
+Copy `.env.example` to `.env` and set `NEXT_PUBLIC_API_URL` to your NestJS API (default `http://localhost:3001`). This app’s dev server uses **3000** (`pnpm dev` runs `next dev -p 3000`).
 
 Run the development server:
 
@@ -10,7 +10,7 @@ Run the development server:
 pnpm dev
 ```
 
-Open [http://localhost:3001](http://localhost:3001) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

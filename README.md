@@ -4,7 +4,7 @@ A recruiter-friendly portfolio app with an AI chat experience that answers quest
 
 ## What’s inside
 
-- **`apps/web`**: Next.js (App Router) chat UI (dev server on **3001**)
+- **`apps/web`**: Next.js (App Router) chat UI (dev server on **3000**)
 - **`apps/api`**: NestJS API gateway (exposes chat endpoint, talks to `apps/ai`)
 - **`apps/ai`**: FastAPI RAG service (embed → retrieve from pgvector → generate with Gemini/Vertex AI; streams SSE)
 - **`docs/`**: the source-of-truth content (about/resume/projects) used for retrieval
@@ -50,7 +50,7 @@ This starts:
 
 - Postgres + pgvector on **5432**
 - FastAPI AI service on **8000**
-- NestJS API gateway on **3002** (container port 3000)
+- NestJS API gateway on **3001** on the host (maps to port **3000** inside the container)
 
 ```bash
 docker compose up --build
@@ -63,7 +63,7 @@ pnpm install
 pnpm --filter web dev
 ```
 
-Open `http://localhost:3001`.
+Open `http://localhost:3000`.
 
 > The web app reads `NEXT_PUBLIC_API_URL` from `apps/web/.env`.
 
@@ -94,7 +94,7 @@ pnpm install
 pnpm --filter api start:dev
 ```
 
-The API listens on `http://localhost:3000` by default.
+The API listens on `http://localhost:3001` by default (see `apps/api/.env.example`).
 
 ### 4) Web app (Next.js)
 
@@ -102,7 +102,7 @@ The API listens on `http://localhost:3000` by default.
 pnpm --filter web dev
 ```
 
-Web runs on `http://localhost:3001`.
+Web runs on `http://localhost:3000`.
 
 ## Ingest docs into pgvector (required for good answers)
 
@@ -122,8 +122,8 @@ Notes:
 
 ## Ports & URLs
 
-- **Web (Next.js)**: `http://localhost:3001`
-- **API (NestJS)**: `http://localhost:3000` (local), `http://localhost:3002` (docker-compose mapped)
+- **Web (Next.js)**: `http://localhost:3000`
+- **API (NestJS)**: `http://localhost:3001` (local dev and docker-compose host port)
 - **AI (FastAPI)**: `http://localhost:8000`
 - **DB (Postgres/pgvector)**: `localhost:5432`
 
