@@ -21,10 +21,10 @@ export default function NotFound() {
           portfolio chat and keep exploring.
         </p>
 
-        <div className="mt-8 rounded-[12px] border border-(--ds-border) bg-(--ds-panel) px-4 py-4 text-left text-sm leading-6 text-(--ds-muted)">
+        <div className="flex justify-center items-center mt-8 rounded-[12px] border border-(--ds-border) bg-(--ds-panel) px-4 py-4 text-left text-sm leading-6 text-(--ds-muted)">
           <span className="font-medium text-(--ds-text)">Sapondanai Thongchua</span>
           <span className="mx-1.5 text-(--ds-border)">·</span>
-          RAG portfolio chatbot
+          RAG Portfolio Chatbot
         </div>
 
         <Link
