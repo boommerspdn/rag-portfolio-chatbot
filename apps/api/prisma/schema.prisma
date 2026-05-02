@@ -38,13 +38,29 @@ model ChatLog {
   @@index([status])
 }
 
-model chunks {
-  id        String                 @id
-  source    String
-  content   String
-  metadata  Json                   @default("{}")
-  embedding Unsupported("vector")?
+/// RAG chunks + ingest runs — must match `scripts/ingest/ingest.py` and AI retrieval SQL.
+model IngestRun {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  isActive  Boolean  @default(false) @map("is_active")
 
-  @@index([embedding])
+  chunks Chunk[]
+
+  @@map("ingest_runs")
 }
 
+model Chunk {
+  id          String   @id
+  source      String
+  content     String
+  metadata    Json     @default("{}")
+  ingestRunId String?  @map("ingest_run_id") @db.Uuid
+  ingestedAt  DateTime @default(now()) @map("ingested_at")
+  embedding   Unsupported("vector(768)")?
+
+  ingestRun IngestRun? @relation(fields: [ingestRunId], references: [id], onDelete: SetNull)
+
+  @@map("chunks")
+  @@index([embedding])
+  @@index([ingestRunId])
+}
