@@ -131,9 +131,10 @@ jobs:
           NEON_DATABASE_URL_API: ${{ secrets.NEON_DATABASE_URL_API }}
           WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
           AI_BASE_URL: ${{ steps.deploy_ai.outputs.url }}
-          PORT: "3000"
         run: python3 scripts/gcp_run_env_yaml.py api
 
+      # api listens on 3000 (Dockerfile EXPOSE / Nest default, same convention as Next.js dev).
+      # Cloud Run sets PORT from --port below; do not add PORT to --env-vars-file (reserved).
       - uses: google-github-actions/deploy-cloudrun@v3
         with:
           service: api

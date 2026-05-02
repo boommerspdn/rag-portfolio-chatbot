@@ -25,11 +25,11 @@ def main() -> None:
         ]
         out_path = "/tmp/ai-env.yaml"
     elif mode == "api":
+        # Do not set PORT here: Cloud Run reserves PORT and injects it to match gcloud --port.
         pairs = [
             ("DATABASE_URL", "NEON_DATABASE_URL_API"),
             ("AI_BASE_URL", "AI_BASE_URL"),
             ("WEB_ORIGIN", "WEB_ORIGIN"),
-            ("PORT", "PORT"),
         ]
         out_path = "/tmp/api-env.yaml"
     else:
@@ -38,8 +38,6 @@ def main() -> None:
     lines: list[str] = []
     for yaml_key, env_key in pairs:
         raw = os.environ.get(env_key, "")
-        if yaml_key == "PORT" and not raw:
-            raw = "3000"
         if not raw:
             raise SystemExit(f"missing environment variable {env_key}")
         lines.append(f"{yaml_key}: {yaml_double_quoted(raw)}")

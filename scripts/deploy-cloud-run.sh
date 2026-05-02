@@ -84,7 +84,6 @@ m = {
     'DATABASE_URL': os.environ['NEON_DATABASE_URL_API'],
     'AI_BASE_URL': os.environ['AI_URL'],
     'WEB_ORIGIN': os.environ['WEB_ORIGIN'],
-    'PORT': '3000',
 }
 with open('/tmp/api-env.yaml', 'w') as f:
     for k, v in m.items():
