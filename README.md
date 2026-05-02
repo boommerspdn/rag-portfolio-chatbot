@@ -137,3 +137,7 @@ pnpm type-check
 pnpm format
 ```
 
+## Production deployment
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for **Neon** + **Cloud Run** (`ai`, `api`) + **Vercel** (`web`) and **GitHub Actions** (CI/CD). Root [vercel.json](vercel.json) sets install/build when the Vercel project root is the **repository root**.
+
