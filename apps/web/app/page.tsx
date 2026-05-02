@@ -365,7 +365,7 @@ export default function Home() {
                   </div>
                 </form>
                 <p className="mt-2 text-xs leading-4 text-(--ds-muted)">
-                  Chats may be logged.
+                  Chat messages may be logged.
                 </p>
               </div>
             </section>
