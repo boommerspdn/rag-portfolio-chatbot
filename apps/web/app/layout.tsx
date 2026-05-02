@@ -13,7 +13,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RAG Portfolio",
+  title: "RAG Portfolio Chatbot | Sapondanai Thongchua",
   description: "RAG-powered portfolio chatbot",
 };
 
