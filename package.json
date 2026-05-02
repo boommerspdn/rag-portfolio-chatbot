@@ -1,5 +1,5 @@
 {
-  "name": "get-to-know-me",
+  "name": "rag-portfolio-chatbot",
   "private": true,
   "scripts": {
     "dev": "turbo dev",

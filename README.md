@@ -1,4 +1,4 @@
-# Get-to-know-me — RAG Portfolio Chatbot
+# RAG Portfolio Chatbot
 
 A recruiter-friendly portfolio app with an AI chat experience that answers questions **about me** from curated internal docs (not generic prompts). Answers are streamed to the UI via **Server‑Sent Events (SSE)**.
 

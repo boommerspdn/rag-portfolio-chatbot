@@ -1,5 +1,5 @@
 {
-  "name": "@get-to-know-me/types",
+  "name": "@rag-portfolio-chatbot/types",
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.ts",

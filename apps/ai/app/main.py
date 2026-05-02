@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import chat, health
 
-app = FastAPI(title="get-to-know-me AI service", version="0.1.0")
+app = FastAPI(title="RAG Portfolio Chatbot AI service", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
