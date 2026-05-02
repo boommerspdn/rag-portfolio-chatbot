@@ -1,0 +1,126 @@
+name: Backend CI and deploy
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm type-check
+
+      - name: Test API
+        run: pnpm --filter api test
+
+  deploy:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_ARTIFACT_REGISTRY: ${{ vars.GCP_ARTIFACT_REGISTRY }}
+      GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION }}
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check deploy configuration
+        run: |
+          test -n "${GCP_PROJECT_ID}" || { echo "Set repository variable GCP_PROJECT_ID"; exit 1; }
+          test -n "${GCP_REGION}" || { echo "Set repository variable GCP_REGION"; exit 1; }
+          test -n "${GCP_ARTIFACT_REGISTRY}" || { echo "Set repository variable GCP_ARTIFACT_REGISTRY"; exit 1; }
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push ai image
+        run: |
+          IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REGISTRY}/ai:${IMAGE_TAG}"
+          docker build -t "${IMAGE}" -f apps/ai/Dockerfile apps/ai
+          docker push "${IMAGE}"
+          echo "AI_IMAGE=${IMAGE}" >> "$GITHUB_ENV"
+
+      - name: Write Cloud Run env file for ai
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          NEON_DATABASE_URL_AI: ${{ secrets.NEON_DATABASE_URL_AI }}
+          EMBEDDING_MODEL: ${{ vars.AI_EMBEDDING_MODEL }}
+          CHAT_MODEL: ${{ vars.AI_CHAT_MODEL }}
+          TOP_K_CHUNKS: ${{ vars.AI_TOP_K_CHUNKS }}
+        run: |
+          export GOOGLE_CLOUD_LOCATION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
+          export EMBEDDING_MODEL="${EMBEDDING_MODEL:-text-embedding-005}"
+          export CHAT_MODEL="${CHAT_MODEL:-gemini-2.5-flash}"
+          export TOP_K_CHUNKS="${TOP_K_CHUNKS:-5}"
+          python3 scripts/gcp_run_env_yaml.py ai
+
+      - id: deploy_ai
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ai
+          region: ${{ vars.GCP_REGION }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          image: ${{ env.AI_IMAGE }}
+          env_vars_file: /tmp/ai-env.yaml
+          flags: >-
+            --port=8000
+            --allow-unauthenticated
+
+      - name: Build and push api image
+        run: |
+          IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REGISTRY}/api:${IMAGE_TAG}"
+          docker build -t "${IMAGE}" -f apps/api/Dockerfile .
+          docker push "${IMAGE}"
+          echo "API_IMAGE=${IMAGE}" >> "$GITHUB_ENV"
+
+      - name: Write Cloud Run env file for api
+        env:
+          NEON_DATABASE_URL_API: ${{ secrets.NEON_DATABASE_URL_API }}
+          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
+          AI_BASE_URL: ${{ steps.deploy_ai.outputs.url }}
+          PORT: "3000"
+        run: python3 scripts/gcp_run_env_yaml.py api
+
+      - uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: api
+          region: ${{ vars.GCP_REGION }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          image: ${{ env.API_IMAGE }}
+          env_vars_file: /tmp/api-env.yaml
+          flags: >-
+            --port=3000
+            --allow-unauthenticated
