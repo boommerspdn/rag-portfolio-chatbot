@@ -31,3 +31,103 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/* Tighten assistant markdown spacing (react-markdown defaults are roomy). */
+.chat-markdown :where(p) {
+  margin: 0.75 0; /* Increased for better readability */
+  line-height: 1.6;
+}
+
+.chat-markdown :where(p:first-child) {
+  margin-top: 0;
+}
+
+.chat-markdown :where(p:last-child) {
+  margin-bottom: 0;
+}
+
+.chat-markdown :where(p:empty) {
+  display: block;
+  margin: 0.75 0;
+  line-height: 0;
+}
+
+.chat-markdown :where(ul, ol) {
+  margin: 0.75 0;
+  padding-left: 1.5rem; /* Adjusted for a tighter alignment with text */
+}
+
+.chat-markdown :where(ul) {
+  list-style: disc;
+}
+
+.chat-markdown :where(ol) {
+  list-style: decimal;
+}
+
+.chat-markdown :where(li) {
+  margin: 0.5rem 0; /* Added spacing between list items */
+}
+
+.chat-markdown :where(li > p) {
+  margin: 0; /* Prevents double-spacing inside list items */
+}
+
+/* Code blocks (` ``` `) render as <pre><code>...</code></pre> */
+.chat-markdown :where(pre) {
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-panel-2);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+}
+.chat-markdown :where(.chat-codeblock > pre) {
+  margin: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.chat-markdown :where(.chat-codeblock__header) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border: 1px solid var(--ds-border);
+  border-bottom: 0;
+  background: var(--ds-panel);
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  padding: 0.35rem 0.6rem;
+}
+.chat-markdown :where(.chat-codeblock__lang) {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1;
+  color: var(--ds-muted);
+}
+.chat-markdown :where(pre > code) {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+/* Inline code (`like this`) */
+.chat-markdown :where(:not(pre) > code) {
+  border: 1px solid var(--ds-border);
+  background: var(--ds-panel-2);
+  border-radius: 8px;
+  padding: 0.05rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.chat-markdown :where(blockquote) {
+  margin: 0.75 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--ds-border);
+  color: var(--ds-muted);
+}

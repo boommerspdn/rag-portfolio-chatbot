@@ -369,7 +369,7 @@ export default function Home() {
 
             <aside
               className={cn(
-                "min-w-0 md:flex md:h-full md:min-h-0 md:flex-col md:border-l md:border-(--ds-border) md:pl-8 md:py-8",
+                "flex min-w-0 min-h-0 h-full flex-col md:border-l md:border-(--ds-border) md:pl-8 md:py-8",
                 tab !== "sources" ? "hidden md:flex" : "block md:flex",
               )}
             >
@@ -378,7 +378,7 @@ export default function Home() {
                 <div className="mt-3 h-px w-full bg-(--ds-border)" />
               </div>
 
-              <ScrollArea className="mt-4 min-h-0 flex-1 md:min-h-0">
+              <ScrollArea className="mt-4 min-h-0 flex-1">
                 <div className="space-y-4 pb-10 pr-3">
                   {sources.length === 0 ? (
                     <div className="text-sm leading-6 text-(--ds-muted)">

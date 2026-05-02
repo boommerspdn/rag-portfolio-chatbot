@@ -7,6 +7,8 @@ export type ChatMessageModel = {
 
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
+import remarkGfm from "remark-gfm";
 
 import { cn } from "../lib/cn";
 
@@ -34,9 +36,11 @@ export function ChatMessage({
 
   return (
     <div className={cn("flex justify-start", className)} {...props}>
-      <div className="max-w-[85%] border-l-2 border-(--ds-accent) pl-3 text-[15px] leading-relaxed text-(--ds-text)">
-        <div className="whitespace-pre-wrap">
-          <ReactMarkdown>{message.content}</ReactMarkdown>
+      <div className="sm:max-w-[85%] border-l-2 border-(--ds-accent) pl-3 text-[15px] leading-relaxed text-(--ds-text)">
+        <div className="chat-markdown">
+          <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+            {message.content}
+          </ReactMarkdown>
         </div>
         {showCursor ? (
           <span className="inline-block w-[0.5ch] align-baseline">
