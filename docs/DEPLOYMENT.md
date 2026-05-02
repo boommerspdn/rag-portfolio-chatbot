@@ -37,8 +37,8 @@ In your existing GCP project:
 
 | Secret | Purpose |
 |--------|---------|
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full WIF provider resource name |
-| `GCP_SERVICE_ACCOUNT` | Deployer SA email (used by `auth`) |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Full **provider** resource name (STS audience), exactly: `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL_ID>/providers/<PROVIDER_ID>`. Use the **numeric** project number after `projects/`, not the project id string. No `https://`, no `principalSet://`, no trailing newline. Copy from GCP: **IAM & Admin → Workload Identity Federation** → your pool → **provider** → resource name. |
+| `GCP_SERVICE_ACCOUNT` | Deployer SA email (used by `auth`), e.g. `name@project.iam.gserviceaccount.com` |
 | `NEON_DATABASE_URL_API` | Prisma `DATABASE_URL` for `api` |
 | `NEON_DATABASE_URL_AI` | Asyncpg `DATABASE_URL` for `ai` |
 | `WEB_ORIGIN` | Browser origin for CORS, e.g. `https://your-app.vercel.app` |
@@ -58,6 +58,10 @@ In your existing GCP project:
 For **Vertex on `ai`**, grant `roles/aiplatform.user` to the Cloud Run **runtime** service account (often the project default compute SA) or attach a dedicated SA via `gcloud run services update ai --service-account=...` after first deploy. Optional: [scripts/deploy-cloud-run.sh](../scripts/deploy-cloud-run.sh) supports `GCP_CLOUDRUN_SA_AI` for the first `gcloud run deploy ai`.
 
 Workflow: [.github/workflows/backend.yml](../.github/workflows/backend.yml).
+
+### GitHub Actions: `Invalid value for "audience"`
+
+If `google-github-actions/auth` fails with an STS error about **audience**, the value in `GCP_WORKLOAD_IDENTITY_PROVIDER` is not a valid identity **provider** resource name. Typical mistakes: using the **project id** (`my-project-id`) instead of **project number** in the path; pasting only the pool path (missing `/providers/...`); including a URL or `principalSet://…` binding string; or an accidental newline when saving the secret.
 
 ## 4. Vercel (Next.js)
 

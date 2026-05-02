@@ -49,10 +49,32 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check deploy configuration
+        env:
+          GCP_WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          GCP_DEPLOYER_SA: ${{ secrets.GCP_SERVICE_ACCOUNT }}
         run: |
           test -n "${GCP_PROJECT_ID}" || { echo "Set repository variable GCP_PROJECT_ID"; exit 1; }
           test -n "${GCP_REGION}" || { echo "Set repository variable GCP_REGION"; exit 1; }
           test -n "${GCP_ARTIFACT_REGISTRY}" || { echo "Set repository variable GCP_ARTIFACT_REGISTRY"; exit 1; }
+
+          test -n "${GCP_WIF_PROVIDER}" || { echo "::error::Set repository secret GCP_WORKLOAD_IDENTITY_PROVIDER"; exit 1; }
+          test -n "${GCP_DEPLOYER_SA}" || { echo "::error::Set repository secret GCP_SERVICE_ACCOUNT"; exit 1; }
+
+          WIF_TRIMMED=$(printf '%s' "${GCP_WIF_PROVIDER}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+          if [ "${GCP_WIF_PROVIDER}" != "${WIF_TRIMMED}" ]; then
+            echo "::error::GCP_WORKLOAD_IDENTITY_PROVIDER has leading or trailing whitespace or newlines. Re-save the secret in GitHub (value only, no quotes)."
+            exit 1
+          fi
+          if ! printf '%s' "${WIF_TRIMMED}" | grep -qE '^projects/[0-9]{6,}/locations/global/workloadIdentityPools/[^/]+/providers/[^/]+$'; then
+            echo "::error::GCP_WORKLOAD_IDENTITY_PROVIDER must be the full provider resource name, e.g."
+            echo "projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID"
+            echo "Use the numeric project number after projects/ (Console → IAM → Workload Identity Federation → your pool → provider), not the project id string. No https:// or principalSet:// prefix."
+            exit 1
+          fi
+          if ! printf '%s' "${GCP_DEPLOYER_SA}" | grep -qE '^[a-z0-9-]+@[a-z0-9.-]+\.iam\.gserviceaccount\.com$'; then
+            echo "::error::GCP_SERVICE_ACCOUNT must be the deployer service account email (…@….iam.gserviceaccount.com)."
+            exit 1
+          fi
 
       - uses: google-github-actions/auth@v3
         with:
