@@ -378,7 +378,7 @@ export default function Home() {
                 <div className="mt-3 h-px w-full bg-(--ds-border)" />
               </div>
 
-              <ScrollArea className="mt-4 min-h-0 flex-1 md:min-h-0">
+              <ScrollArea className="mt-4 min-h-0 flex-1">
                 <div className="space-y-4 pb-10 pr-3">
                   {sources.length === 0 ? (
                     <div className="text-sm leading-6 text-(--ds-muted)">
