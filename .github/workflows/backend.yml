@@ -132,6 +132,16 @@ jobs:
           AI_BASE_URL: ${{ steps.deploy_ai.outputs.url }}
         run: python3 scripts/gcp_run_env_yaml.py api
 
+      - name: Apply Prisma migrations (before api rollout)
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_API }}
+        run: |
+          docker run --rm \
+            --entrypoint ./node_modules/.bin/prisma \
+            -e DATABASE_URL \
+            "${API_IMAGE}" \
+            migrate deploy
+
       # api listens on 3000 (Dockerfile EXPOSE / Nest default, same convention as Next.js dev).
       # Cloud Run sets PORT from --port below; do not add PORT to --env-vars-file (reserved).
       - uses: google-github-actions/deploy-cloudrun@v3

@@ -90,6 +90,13 @@ with open('/tmp/api-env.yaml', 'w') as f:
         f.write(f'{k}: {q(v)}\n')
 "
 
+echo "Applying Prisma migrations (api image, one-off container)..."
+docker run --rm \
+  --entrypoint ./node_modules/.bin/prisma \
+  -e "DATABASE_URL=${NEON_DATABASE_URL_API}" \
+  "${API_IMAGE}" \
+  migrate deploy
+
 echo "Deploying api..."
 gcloud run deploy api \
   --project="${GCP_PROJECT_ID}" \

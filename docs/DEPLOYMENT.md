@@ -9,7 +9,7 @@ This guide matches the production stack: **Neon** (Postgres + pgvector), **Cloud
 3. Create **two connection strings** (same logical DB, different URL schemes for each app):
    - **Nest / Prisma (`api`):** `postgresql://` or `postgres://` (no `+asyncpg`). Example: `postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require`
    - **FastAPI / SQLAlchemy (`ai`):** `postgresql+asyncpg://...` with the same host, user, password, and database. See [apps/ai/.env.example](../apps/ai/.env.example).
-4. Choose **direct** vs **pooler** (`-pooler` host) per [Neon docs](https://neon.com/docs/connect/connection-pooling) and use the same mode for migrations (`api` entrypoint runs `prisma migrate deploy` on startup).
+4. Choose **direct** vs **pooler** (`-pooler` host) per [Neon docs](https://neon.com/docs/connect/connection-pooling) and use the same mode for migrations and for the running `api` service.
 
 Store these URLs in **GitHub Actions secrets** (`NEON_DATABASE_URL_API`, `NEON_DATABASE_URL_AI`) and/or **GCP Secret Manager** (recommended for rotation).
 
@@ -30,6 +30,25 @@ In your existing GCP project:
    - Create a dedicated SA, grant the role, and pass it with `--service-account=...` on deploy (see [scripts/deploy-cloud-run.sh](../scripts/deploy-cloud-run.sh) and workflow `flags`).
 
 **First deploy (manual smoke test):** run [scripts/deploy-cloud-run.sh](../scripts/deploy-cloud-run.sh) from a machine with `gcloud` and Docker, after exporting the variables documented in that script. Deploy **`ai` first**, then **`api`** with `AI_BASE_URL` set to the `ai` service HTTPS URL.
+
+### Database migrations (`api` / Prisma)
+
+Migrations are **not** applied when a Cloud Run instance starts (keeps cold starts fast). Apply them **before** deploying a new `api` revision whenever the repo includes new files under `apps/api/prisma/migrations`.
+
+- **GitHub Actions:** the `deploy` job runs `prisma migrate deploy` once per deploy using the built `api` image (see [.github/workflows/backend.yml](../.github/workflows/backend.yml)).
+- **Manual / local against Neon:** from the repo root, with `DATABASE_URL` set to the same value as `NEON_DATABASE_URL_API`:
+
+  `pnpm install --frozen-lockfile && pnpm --filter api db:migrate:deploy`
+
+- **Manual using the pushed image** (same as the deploy script): after `docker push` of the `api` image:
+
+  `docker run --rm --entrypoint ./node_modules/.bin/prisma -e DATABASE_URL="$NEON_DATABASE_URL_API" "$API_IMAGE" migrate deploy`
+
+- **Docker Compose (local Postgres):** with the stack up and `DATABASE_URL` coming from Compose:
+
+  `docker compose run --rm --entrypoint ./node_modules/.bin/prisma api migrate deploy`
+
+If a migration fails with **P3009**, Postgres still has a failed row in `_prisma_migrations`; resolve per [Prisma migrate resolve](https://www.prisma.io/docs/orm/prisma-migrate/workflows/troubleshooting-development#failed-migration) (dev DB: `docker compose down -v` is often simplest).
 
 ## 3. GitHub repository configuration
 
@@ -85,3 +104,7 @@ Set **Preview** env vars if preview deployments should call a staging API; other
 ## 6. Local development
 
 [docker-compose.yml](../docker-compose.yml) is unchanged for local **`db` + `ai` + `api`**. Production Neon URLs are **not** required for Compose unless you choose to point local apps at Neon.
+
+After schema changes, apply migrations against the Compose database with:
+
+`docker compose run --rm --entrypoint ./node_modules/.bin/prisma api migrate deploy`
