@@ -104,6 +104,17 @@ pnpm --filter web dev
 
 Web runs on `http://localhost:3000`.
 
+## Database migrations
+
+After pulling the project from GitHub or updating the schema, run pending migrations:
+
+```bash
+cd apps/api
+pnpm db:migrate:deploy
+```
+
+This uses Prisma to apply any pending migrations to your database. The `DATABASE_URL` environment variable must be set and point to your PostgreSQL instance.
+
 ## Ingest docs into pgvector (required for good answers)
 
 Run this whenever `docs/` changes.
